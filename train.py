@@ -133,7 +133,7 @@ print('Test Accuracy :',test_accuracy)
 raw_predictions = model.predict(test_sequences)
 
 # 2. Convert probabilities into hard 1s and 0s
-# If the model is more than 50% sure, we label it Spam (1)
+# If the model is more than 50% sure, we label it Spam
 y_pred = (raw_predictions > 0.5).astype(int)
 cm = confusion_matrix(y_test, y_pred)
 # tn = True Negatives, fp = False Positives, fn = False Negatives, tp = True Positives
@@ -165,10 +165,10 @@ import pickle
 
 print("\nExporting the final production model...")
 
-# 1. Save the Neural Network Model (The Math)
+# 1. Save the Neural Network Model
 model.save('ro_spam_model.keras')
 
-# 2. Save the Tokenizer (The Vocabulary)
+# 2. Save the Tokenizer
 with open('ro_tokenizer.pkl', 'wb') as handle:
     pickle.dump(tokenizer, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
