@@ -1,0 +1,10 @@
+# Google Cloud Secrets
+secrets/
+credentials.json
+token.json
+
+__pycache__
+.idea/
+# Machine Learning Models (Optional, but good practice since they are large)
+*.keras
+*.pkl
