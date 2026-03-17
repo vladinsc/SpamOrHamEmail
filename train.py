@@ -61,8 +61,6 @@ def clean_data(df: pd.DataFrame)-> pd.DataFrame:
     df_final = df[['clean_text', 'label_spam', 'label_auto', 'label_action']]
     return df_final
 
-
-
 #Cleaning the data
 df_train = clean_data(dataset['train'].to_pandas())
 df_test = clean_data(dataset['test'].to_pandas())

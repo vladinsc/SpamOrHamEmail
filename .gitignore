@@ -2,7 +2,9 @@
 secrets/
 credentials.json
 token.json
-
+pubsub_key.json
+.env
+force_pull.py
 __pycache__
 .idea/
 # Machine Learning Models (Optional, but good practice since they are large)

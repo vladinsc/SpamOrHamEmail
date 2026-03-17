@@ -4,10 +4,16 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
+from google.cloud import pubsub_v1
 import time
 import model as spamOrHam
+from dotenv import load_dotenv
 SCOPES = ['https://www.googleapis.com/auth/gmail.modify']
-
+load_dotenv()
+PROJECT_ID = os.getenv('PROJECT_ID')
+TOPIC_NAME = os.getenv('TOPIC_NAME')
+SUBSCRIPTION_ID = os.getenv('SUBSCRIPTION_ID')
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "secrets/pubsub_key.json"
 
 def authenticate_gmail():
     creds = None
@@ -23,7 +29,6 @@ def authenticate_gmail():
             with open('secrets/token.json', 'w') as token:
                 token.write(creds.to_json())
     return build('gmail', 'v1', credentials=creds)
-
 def get_email_body(payload):
     body = ""
     if 'parts' in payload:
@@ -37,13 +42,11 @@ def get_email_body(payload):
         data = payload['body'].get('data', '')
         body = base64.urlsafe_b64decode(data).decode('utf-8')
     return body
-
 def save_email(sender,subject,body):
-
-
-def scan_inbox(service, app_start_time):
+    pass
+def scan_inbox(service, start_time):
     print("\nScanning inbox for new Mail...")
-    results = service.users().messages().list(userId='me', q=f'is:unread in:inbox after:{app_start_time}').execute()
+    results = service.users().messages().list(userId='me', q=f'is:unread in:inbox after:{start_time}').execute()
     messages = results.get('messages', [])
     if not messages:
         print("Your inbox has no messages... Lucky Lad or Lonely?..")
@@ -76,15 +79,35 @@ def scan_inbox(service, app_start_time):
             print("You got a spam email")
         else:
             print("You got a ham email")
-
+def setup_gmail_push(service):
+    request = {
+        'labelIds': ["INBOX"],
+        'labelFilterAction': 'include',
+        'topicName': f'projects/{PROJECT_ID}/topics/{TOPIC_NAME}'
+    }
+    try:
+        response = service.users().watch(userId='me', body=request).execute()
+        print(f"Gmail Push Active! Cloud Response: {response}")
+        return response
+    except Exception as e:
+        print(f"CRITICAL ERROR connecting to Pub/Sub: {e}")
+def callback(message):
+    print("Message Received!")
+    message.ack()
+    scan_inbox(gmail_service, int(time.time())-300)
 
 if __name__ == '__main__':
-    gmail_service = authenticate_gmail()
 
-    try:
-        while True:
-            app_start_time = int(time.time())
-            scan_inbox(gmail_service, app_start_time)
-            time.sleep(10)
-    except KeyboardInterrupt:
-        print("Keyboard Interrupt. Bye Bye, may your inbox be only ham!")
+    app_start_time = int(time.time())
+    gmail_service = authenticate_gmail()
+    setup_gmail_push(gmail_service)
+    subscriber = pubsub_v1.SubscriberClient()
+    subscription_path = subscriber.subscription_path(PROJECT_ID, SUBSCRIPTION_ID)
+    streaming_pull_future = subscriber.subscribe(subscription_path, callback=callback)
+    with subscriber:
+        try:
+            streaming_pull_future.result()
+        except KeyboardInterrupt or Exception as e :
+            print(e)
+            print("Keyboard Interrupt. Bye Bye, may your inbox be only ham!")
+            streaming_pull_future.cancel()
